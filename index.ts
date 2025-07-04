@@ -143,14 +143,15 @@ async function main(): Promise<void>  {
 
     // i am using public endpoint so no need of any tokens
     const client = new Client(ENDPOINT, undefined, undefined);
-    console.log("client:", client);
+    // console.log("client:", client);
     
     const stream = await client.subscribe();
-    console.log("stream", stream);
+    // console.log("stream", stream);
 
-    const version = await client.getVersion();
-    console.log("vsersion",version);
-    console.log("bhash",await client.getLatestBlockhash());
+    // just for testing purpose if the connection is working or not
+    // const version = await client.getVersion();
+    // console.log("vsersion",version);
+    // console.log("bhash",await client.getLatestBlockhash());
 
 
     //stream.on("data", (data) => {
@@ -168,7 +169,7 @@ async function main(): Promise<void>  {
     // })
 
     const request = createSubscribeRequest();
-    console.log("request:", request);
+    // console.log("request:", request);
 
     try {
         await sendSubscribeRequest(stream, request);
@@ -219,7 +220,7 @@ function sendSubscribeRequest(
 }
 
 function handleStreamEvents(stream: ClientDuplexStream<SubscribeRequest, SubscribeUpdate>): Promise<void> {
-    console.log("inside handlestream data");
+    // console.log("inside handlestream data");
     return new Promise<void> ((resolve, reject) => {
         stream.on('data', handleData);
         stream.on("error", (error: Error) => {
@@ -274,7 +275,7 @@ function handleData(data: SubscribeUpdate): void {
 
     const formattedSignature = convertSignature(transaction.signature);
     const formattedData = formatData(message, formattedSignature.base58, data?.transaction?.slot || "");
-
+    // i am just logging the formatted data you can save it to a file or database or create a webhook to send it to your client directly
     if(formattedData) {
         console.log("===============================================new mint detected !===============================================");
         console.log(formattedData);
