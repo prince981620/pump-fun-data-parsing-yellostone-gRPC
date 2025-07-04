@@ -4,6 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node dist/index.js",
+    "dev": "npx ts-node index.ts",
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -18,6 +23,8 @@
     "dotenv": "^17.0.1"
   },
   "devDependencies": {
-    "@types/dotenv": "^6.1.1"
+    "@types/dotenv": "^6.1.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.0"
   }
 }

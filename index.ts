@@ -140,6 +140,7 @@ interface ParsedTokenData {
 async function main(): Promise<void>  {
     console.log("let start");
     if(!ENDPOINT && !TOKEN) {
+        console.log(ENDPOINT, TOKEN);
         console.log("Please provide Endpoint URL and TOken in env file");
         return;
     }
@@ -259,9 +260,9 @@ function handleData(data: SubscribeUpdate): void {
 
     if (transaction && message) {
     message.instructions.forEach((ix, idx) => {
-      console.log(`Instruction ${idx} data:`, Buffer.from(ix.data).toString('hex'));
+    //   console.log(`Instruction ${idx} data:`, Buffer.from(ix.data).toString('hex'));
     });
-  }
+    }
 
     if(!transaction || !message) {
         return;
@@ -312,9 +313,11 @@ function convertSignature(signature: Uint8Array): {base58: string} {
 }
 
 function matchesInstructionDiscriminator(ix: CompiledInstruction): boolean {
-    console.log("inside matching instructon discriminator")
+//     console.log("inside matching instructon discriminator")
+//     console.log("ix data:", ix?.data);
+//     console.log("create discriminator :", Buffer.from([24, 30, 200, 40, 5, 28, 7, 119]));
     const matches =  ix?.data && FILTER_CONFIG.instructionDiscriminators.some(discriminator => Buffer.from(discriminator).equals(ix.data.slice(0, 8)));
-    console.log("matches:", matches);
+    // console.log("matches:", matches);
     return matches;
 }
 
