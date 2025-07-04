@@ -10,6 +10,8 @@ import { PublicKey } from "@solana/web3.js";
 import bs58 from 'bs58';
 import dotenv from 'dotenv';
 dotenv.config();
+import { promises as fs } from 'fs';
+const filePath = './tokens.json';
 
 
 // Interfaces
@@ -67,7 +69,7 @@ const PUMP_PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
     }...
 */
 const PUMP_FUN_CREATE_IX_DISCRIMINATOR = Buffer.from([24, 30, 200, 40, 5, 28, 7, 119]);
-const COMMITMENT = CommitmentLevel.PROCESSED;
+const COMMITMENT = CommitmentLevel.FINALIZED;
 // All required interfaces
 
 
@@ -76,70 +78,60 @@ const FILTER_CONFIG = {
     instructionDiscriminators: [PUMP_FUN_CREATE_IX_DISCRIMINATOR]
 }
 
-const ACCOUNTS_TO_INCLUDE = [{
-    name: "mint",
-    index: 0
-}];
+const ACCOUNTS_TO_INCLUDE = [
+    {
+        name: "mint",
+        index: 0
+    },
+    {
+        name: "bonding_curve",
+        index: 2,
+    },
+    {
+        name: "associated_bonding_curve",
+        index: 3,
+    },
+    {
+        name: "user",
+        index: 7,
+    }
+];
+
+// Instruction arguments for the create instruction
+const CREATE_INSTRUCTION_ARGS = [
+    {
+        name: "name",
+        type: "string"
+    },
+    {
+        name: "symbol", 
+        type: "string"
+    },
+    {
+        name: "uri",
+        type: "string"
+    },
+    {
+        name: "creator",
+        type: "pubkey"
+    }
+];
 
 
 interface FormattedTransactionData {
     signature: string;
     slot: string;
-    [accountName: string]: string
+    name?: string;
+    symbol?: string;
+    uri?: string;
+    creator?: string;
+    [accountName: string]: string | undefined;
 }
 
-interface ParsedTokenData {
-  mint: string;
-  name: string;
-  symbol: string;
-  description: string;
-  image_uri: string;
-  metadata_uri: string;
-  twitter: string;
-  telegram: string;
-  website: string;
-  bonding_curve: string;
-  associated_bonding_curve: string;
-  creator: string;
-  created_timestamp: Number;
-  raydium_pool: string;
-  complete: true;
-  virtual_sol_reserves: Number;
-  virtual_token_reserves: Number;
-  hidden: true;
-  total_supply: Number;
-  show_name: true;
-  last_trade_timestamp: Number;
-  king_of_the_hill_timestamp: Number;
-  market_cap: string;
-  nsfw: true;
-  market_id: string;
-  inverted: true;
-  real_sol_reserves: Number;
-  real_token_reserves: Number;
-  livestream_ban_expiry: Number;
-  last_reply: Number;
-  reply_count: Number;
-  is_banned: true;
-  is_currently_live: true;
-  initialized: true;
-  video_uri: string;
-  for_you_id: Number;
-  for_you_deg: 0;
-  usd_market_cap: string;
-  hls_link: string;
-  channel_name: string;
-  stream_title: string;
-  stream_description: string;
-  price: string;
-  last_price_update: Date;
-  search_vector: string;
-  stream_start_time: Date;
-}
 
 async function main(): Promise<void>  {
     console.log("let start");
-    if(!ENDPOINT && !TOKEN) {
+    if(!ENDPOINT || !TOKEN) {
         console.log(ENDPOINT, TOKEN);
         console.log("Please provide Endpoint URL and TOken in env file");
         return;
@@ -251,18 +243,24 @@ function handleData(data: SubscribeUpdate): void {
     // if (!isSubscribeUpdateTransaction(data) || !data.filters.includes('pumpFun')) {
     //     return;
     // }
-    // console.log("inside handle data & data:", data);
 
+    // console.log("inside handle data & data:", data);
+    // const jsonData =  JSON.stringify(data, null, 2);
+
+    // console.log("json data:", jsonData);
+
+    // fs.writeFile(filePath, jsonData, 'utf-8');
+    
     const transaction = data.transaction?.transaction;
     // console.log("transaction:",transaction);
     const message = transaction?.transaction?.message;
     // console.log("message:",message);
 
-    if (transaction && message) {
-    message.instructions.forEach((ix, idx) => {
+    // if (transaction && message) {
+    // message.instructions.forEach((ix, idx) => {
     //   console.log(`Instruction ${idx} data:`, Buffer.from(ix.data).toString('hex'));
-    });
-    }
+    // });
+    // }
 
     if(!transaction || !message) {
         return;
@@ -284,12 +282,53 @@ function handleData(data: SubscribeUpdate): void {
     }
 }
 
+
+function decodeCreateInstructionArgs(instructionData: Uint8Array): Record<string, any> {
+    try {
+        let offset = 8;
+        const args: Record<string, any> = {};
+        const buffer = Buffer.from(instructionData);
+        
+        const nameLength = buffer.readUInt32LE(offset);
+        offset += 4;
+        const nameBytes = buffer.subarray(offset, offset + nameLength); 
+        args.name = nameBytes.toString('utf-8');
+        offset += nameLength;
+        
+        const symbolLength = buffer.readUInt32LE(offset);
+        offset += 4;
+        const symbolBytes = buffer.subarray(offset, offset + symbolLength); 
+        args.symbol = symbolBytes.toString('utf-8');
+        offset += symbolLength;
+        
+        const uriLength = buffer.readUInt32LE(offset);
+        offset += 4;
+        const uriBytes = buffer.subarray(offset, offset + uriLength); 
+        args.uri = uriBytes.toString('utf-8');
+        offset += uriLength;
+        
+        const creatorBytes = buffer.subarray(offset, offset + 32);
+        args.creator = new PublicKey(creatorBytes).toBase58();
+        
+        return args;
+    } catch (error) {
+        console.error('Error decoding instruction args:', error);
+        return {};
+    }
+}
+
 function formatData(message: Message, signature: string, slot: string): FormattedTransactionData | undefined {
     const matchingInstruction = message.instructions.find(matchesInstructionDiscriminator);
 
     if(!matchingInstruction) {
         return undefined;
     }
+
+    // const jsonData =  JSON.stringify(matchingInstruction, null, 2);
+
+    // console.log("json data:", jsonData);
+
+    // fs.writeFile("./mint.json", jsonData, 'utf-8');
 
     const accountKeys = message.accountKeys;
     const includeAccounts = ACCOUNTS_TO_INCLUDE.reduce<Record<string, string>>((acc, { name, index}) => {
@@ -299,12 +338,14 @@ function formatData(message: Message, signature: string, slot: string): Formatte
         return acc;
     }, {});
 
-
+    // Decode instruction arguments
+    const instructionArgs = decodeCreateInstructionArgs(matchingInstruction.data);
 
     return {
         signature,
         slot,
-        ...includeAccounts
+        ...includeAccounts,
+        ...instructionArgs
     }
 }   
 
